@@ -40,6 +40,7 @@ class AuthApplicationServiceTest {
     private AuthApplicationService authService;
 
     private User driverUser;
+    private User managerUser;
 
     @BeforeEach
     void setUp() {
@@ -65,7 +66,70 @@ class AuthApplicationServiceTest {
         setId(driverRole, 1L);
         driverUser.getRoles().add(driverRole);
 
+        managerUser = new User("manager-demo", tenant,
+                "gestor@empresa.com",
+                passwordEncoder.encode("123456"),
+                "Demo", "Gestor");
+        setId(managerUser, 2L);
+        Role managerRole = new Role("FLEET_MANAGER", "Manager role");
+        setId(managerRole, 2L);
+        managerUser.getRoles().add(managerRole);
+
         when(loginLogRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    @Test
+    void login_withValidCredentials_returnsLoginResultWithoutDriverId() {
+        when(userRepository.findByEmail("gestor@empresa.com"))
+                .thenReturn(Optional.of(managerUser));
+
+        AuthApplicationService.LoginResult result =
+                authService.login("gestor@empresa.com", "123456", "127.0.0.1", "test");
+
+        assertThat(result.userId()).isEqualTo("manager-demo");
+        assertThat(result.driverId()).isNull();
+        assertThat(result.tenantId()).isEqualTo("tenant-demo");
+        assertThat(result.accessToken()).isNotBlank();
+    }
+
+    @Test
+    void login_withInactiveAccount_throwsAuthException() {
+        managerUser.setActive(false);
+        when(userRepository.findByEmail("gestor@empresa.com"))
+                .thenReturn(Optional.of(managerUser));
+
+        assertThatThrownBy(() ->
+                authService.login("gestor@empresa.com", "123456", "127.0.0.1", "test"))
+                .isInstanceOf(AuthException.class)
+                .hasMessageContaining("inactiva");
+    }
+
+    @Test
+    void refresh_withValidToken_returnsNewToken() {
+        String token = jwtTokenProvider.generateToken(managerUser);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(managerUser));
+
+        AuthApplicationService.LoginResult result = authService.refresh("Bearer " + token);
+
+        assertThat(result.userId()).isEqualTo("manager-demo");
+        assertThat(result.tenantId()).isEqualTo("tenant-demo");
+        assertThat(result.accessToken()).isNotBlank();
+        assertThat(jwtTokenProvider.isValid(result.accessToken())).isTrue();
+    }
+
+    @Test
+    void refresh_withInvalidToken_throwsAuthException() {
+        assertThatThrownBy(() -> authService.refresh("Bearer token-invalido"))
+                .isInstanceOf(AuthException.class)
+                .hasMessageContaining("Token inválido");
+    }
+
+    @Test
+    void logout_withValidToken_doesNotThrow() {
+        String token = jwtTokenProvider.generateToken(managerUser);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(managerUser));
+
+        authService.logout("Bearer " + token);
     }
 
     @Test
