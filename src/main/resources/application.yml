@@ -1,0 +1,42 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: orion-iam-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/orion-iam
+    username: postgres
+    password: admin123
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+orion:
+  security:
+    jwt:
+      secret: orion-iam-super-secret-key-change-in-production-must-be-at-least-256-bits
+      expiration-ms: 86400000   # 24 horas
