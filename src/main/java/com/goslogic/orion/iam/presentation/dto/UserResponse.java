@@ -2,6 +2,7 @@ package com.goslogic.orion.iam.presentation.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.goslogic.orion.iam.domain.model.Role;
+
 import com.goslogic.orion.iam.domain.model.User;
 
 import java.util.Set;
