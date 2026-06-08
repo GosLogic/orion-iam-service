@@ -15,4 +15,5 @@ public class JwtProperties {
 
     public long getExpirationMs() { return expirationMs; }
     public void setExpirationMs(long expirationMs) { this.expirationMs = expirationMs; }
+    
 }
