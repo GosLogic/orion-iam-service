@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
+                                          
     record ErrorBody(int status, String error, Object message, String timestamp) {}
 
     @ExceptionHandler(AuthException.class)
