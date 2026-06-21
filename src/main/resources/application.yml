@@ -8,7 +8,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/orion-iam
     username: postgres
-    password: admin123
+    password: 123
     driver-class-name: org.postgresql.Driver
 
   jpa:
