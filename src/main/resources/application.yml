@@ -36,6 +36,8 @@ springdoc:
     path: /swagger-ui.html
 
 orion:
+  fleet:
+    base-url: http://localhost:8083
   security:
     jwt:
       secret: orion-iam-super-secret-key-change-in-production-must-be-at-least-256-bits

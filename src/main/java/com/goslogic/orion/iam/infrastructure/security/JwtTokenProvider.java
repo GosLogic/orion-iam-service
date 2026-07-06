@@ -21,7 +21,8 @@ import java.util.Map;
  *   email        → user.email
  *   tenant_id    → tenant.externalId  (ej. "tenant-demo")
  *   tenant_pk    → tenant.id (Long)   (para resolución interna)
- *   driver_id    → user.externalId si tiene rol DRIVER (ej. "driver-demo")
+ *   driver_id    → externalId de Fleet si disponible; fallback user.externalId (D5)
+ *   vehicle_id   → externalId del vehículo asignado en Fleet (solo DRIVER, si resuelto)
  *   roles        → lista de nombres de roles
  */
 @Component
@@ -36,6 +37,10 @@ public class JwtTokenProvider {
     }
 
     public String generateToken(User user) {
+        return generateToken(user, null, null);
+    }
+
+    public String generateToken(User user, String resolvedDriverId, String resolvedVehicleId) {
         Instant now = Instant.now();
         Instant expiry = now.plusMillis(props.getExpirationMs());
 
@@ -54,7 +59,11 @@ public class JwtTokenProvider {
                 .signWith(signingKey);
 
         if (user.hasRole("DRIVER")) {
-            builder.claim("driver_id", user.getExternalId());
+            String driverId = resolvedDriverId != null ? resolvedDriverId : user.getExternalId();
+            builder.claim("driver_id", driverId);
+            if (resolvedVehicleId != null) {
+                builder.claim("vehicle_id", resolvedVehicleId);
+            }
         }
 
         return builder.compact();

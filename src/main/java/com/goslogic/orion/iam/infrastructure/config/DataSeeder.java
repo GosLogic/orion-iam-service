@@ -49,6 +49,7 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         seedRolesAndPermissions();
         seedDemoTenantAndUsers();
+        seedBetaTenantAndUsers();
     }
 
     private void seedRolesAndPermissions() {
@@ -125,6 +126,30 @@ public class DataSeeder implements CommandLineRunner {
         userRepository.save(admin);
 
         log.info("[DataSeeder] Datos demo creados: tenant-demo, conductor@empresa.com, gestor@empresa.com, admin@empresa.com");
+    }
+
+    /** Segundo tenant para la demo de aislamiento multi-tenant (P0-3). Guard propio. */
+    private void seedBetaTenantAndUsers() {
+        if (tenantRepository.existsByExternalId("tenant-beta")) {
+            log.info("[DataSeeder] Tenant beta ya existente — omitiendo seed");
+            return;
+        }
+
+        Tenant tenantBeta = new Tenant("tenant-beta", "Empresa Beta Orion", "20987654321");
+        tenantRepository.save(tenantBeta);
+
+        Role driverRole = roleRepository.findByName("DRIVER")
+                .orElseThrow(() -> new IllegalStateException("Rol DRIVER no encontrado"));
+
+        // Conductor del tenant beta — external_id="driver-beta"
+        User conductorBeta = new User("driver-beta", tenantBeta,
+                "conductor2@empresa.com",
+                passwordEncoder.encode("123456"),
+                "Beta", "Conductor");
+        conductorBeta.getRoles().add(driverRole);
+        userRepository.save(conductorBeta);
+
+        log.info("[DataSeeder] Datos beta creados: tenant-beta, conductor2@empresa.com");
     }
 
     private Permission getOrCreatePermission(String resource, AccessLevel level) {

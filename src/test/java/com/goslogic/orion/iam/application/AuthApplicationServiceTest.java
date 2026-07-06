@@ -6,6 +6,8 @@ import com.goslogic.orion.iam.domain.model.Tenant;
 import com.goslogic.orion.iam.domain.model.User;
 import com.goslogic.orion.iam.domain.repository.LoginLogRepository;
 import com.goslogic.orion.iam.domain.repository.UserRepository;
+import com.goslogic.orion.iam.infrastructure.client.DriverFleetIdentity;
+import com.goslogic.orion.iam.infrastructure.client.FleetClient;
 import com.goslogic.orion.iam.infrastructure.security.JwtProperties;
 import com.goslogic.orion.iam.infrastructure.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,9 @@ class AuthApplicationServiceTest {
     @Mock
     private LoginLogRepository loginLogRepository;
 
+    @Mock
+    private FleetClient fleetClient;
+
     private PasswordEncoder passwordEncoder;
     private JwtTokenProvider jwtTokenProvider;
     private AuthApplicationService authService;
@@ -51,7 +56,10 @@ class AuthApplicationServiceTest {
         passwordEncoder = new BCryptPasswordEncoder();
         jwtTokenProvider = new JwtTokenProvider(props);
         authService = new AuthApplicationService(userRepository, loginLogRepository,
-                passwordEncoder, jwtTokenProvider);
+                passwordEncoder, jwtTokenProvider, fleetClient);
+
+        when(fleetClient.resolveDriverIdentity("driver-demo", "tenant-demo"))
+                .thenReturn(Optional.of(new DriverFleetIdentity("driver-demo", "vehicle-001")));
 
         Tenant tenant = new Tenant("tenant-demo", "Demo", null);
         setId(tenant, 1L);
@@ -171,6 +179,19 @@ class AuthApplicationServiceTest {
                 authService.driverLogin("conductor@empresa.com", "123456", "127.0.0.1", "test"))
                 .isInstanceOf(AuthException.class)
                 .hasMessageContaining("conductor");
+    }
+
+    @Test
+    void driverLogin_fallsBackToUserExternalIdWhenFleetUnavailable() {
+        when(fleetClient.resolveDriverIdentity("driver-demo", "tenant-demo"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmail("conductor@empresa.com"))
+                .thenReturn(Optional.of(driverUser));
+
+        AuthApplicationService.LoginResult result =
+                authService.driverLogin("conductor@empresa.com", "123456", "127.0.0.1", "test");
+
+        assertThat(result.driverId()).isEqualTo("driver-demo");
     }
 
     @Test

@@ -64,6 +64,15 @@ class JwtTokenProviderTest {
     }
 
     @Test
+    void generateToken_includesVehicleIdWhenProvided() {
+        User user = buildUser(true);
+        String token = provider.generateToken(user, "driver-demo", "vehicle-001");
+
+        Claims claims = provider.validateAndExtract(token);
+        assertThat(claims.get("vehicle_id", String.class)).isEqualTo("vehicle-001");
+    }
+
+    @Test
     void generateToken_noDriverIdWhenNotDriver() {
         User user = buildUser(false);
         String token = provider.generateToken(user);

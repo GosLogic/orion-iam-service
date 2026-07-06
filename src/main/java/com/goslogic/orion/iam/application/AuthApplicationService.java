@@ -6,6 +6,7 @@ import com.goslogic.orion.iam.domain.model.LoginStatus;
 import com.goslogic.orion.iam.domain.model.User;
 import com.goslogic.orion.iam.domain.repository.LoginLogRepository;
 import com.goslogic.orion.iam.domain.repository.UserRepository;
+import com.goslogic.orion.iam.infrastructure.client.FleetClient;
 import com.goslogic.orion.iam.infrastructure.security.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,15 +24,18 @@ public class AuthApplicationService {
     private final LoginLogRepository loginLogRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final FleetClient fleetClient;
 
     public AuthApplicationService(UserRepository userRepository,
                                   LoginLogRepository loginLogRepository,
                                   PasswordEncoder passwordEncoder,
-                                  JwtTokenProvider jwtTokenProvider) {
+                                  JwtTokenProvider jwtTokenProvider,
+                                  FleetClient fleetClient) {
         this.userRepository = userRepository;
         this.loginLogRepository = loginLogRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.fleetClient = fleetClient;
     }
 
     public record LoginResult(String userId, String tenantId, String driverId,
@@ -75,8 +79,10 @@ public class AuthApplicationService {
         User user = userRepository.findById(Long.valueOf(userId))
                 .orElseThrow(() -> new AuthException("Usuario no encontrado"));
 
-        String newToken = jwtTokenProvider.generateToken(user);
-        return buildResult(user, newToken);
+        DriverFleetClaims driverClaims = resolveDriverClaims(user);
+        String newToken = jwtTokenProvider.generateToken(
+                user, driverClaims.driverExternalId(), driverClaims.vehicleExternalId());
+        return buildResult(user, newToken, driverClaims);
     }
 
     /**
@@ -111,22 +117,33 @@ public class AuthApplicationService {
         loginLogRepository.save(
                 new LoginLog(user, user.getTenant(), ipAddress, userAgent, LoginStatus.SUCCESS));
 
-        String token = jwtTokenProvider.generateToken(user);
-        return buildResult(user, token);
+        DriverFleetClaims driverClaims = resolveDriverClaims(user);
+        String token = jwtTokenProvider.generateToken(
+                user, driverClaims.driverExternalId(), driverClaims.vehicleExternalId());
+        return buildResult(user, token, driverClaims);
     }
 
-    private LoginResult buildResult(User user, String token) {
+    private record DriverFleetClaims(String driverExternalId, String vehicleExternalId) {}
+
+    private DriverFleetClaims resolveDriverClaims(User user) {
+        if (!user.hasRole("DRIVER")) {
+            return new DriverFleetClaims(null, null);
+        }
+        return fleetClient.resolveDriverIdentity(user.getExternalId(), user.getTenant().getExternalId())
+                .map(identity -> new DriverFleetClaims(identity.driverExternalId(), identity.vehicleExternalId()))
+                .orElse(new DriverFleetClaims(user.getExternalId(), null));
+    }
+
+    private LoginResult buildResult(User user, String token, DriverFleetClaims driverClaims) {
         String expiresAt = Instant.now()
                 .plusMillis(jwtTokenProvider.getExpirationMs())
                 .truncatedTo(ChronoUnit.SECONDS)
                 .toString();
 
-        String driverId = user.hasRole("DRIVER") ? user.getExternalId() : null;
-
         return new LoginResult(
                 user.getExternalId(),
                 user.getTenant().getExternalId(),
-                driverId,
+                driverClaims.driverExternalId(),
                 token,
                 expiresAt,
                 user.getEmail()
