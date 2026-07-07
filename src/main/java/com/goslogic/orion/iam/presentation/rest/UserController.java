@@ -5,6 +5,7 @@ import com.goslogic.orion.iam.domain.model.User;
 import com.goslogic.orion.iam.presentation.dto.AssignRolesRequest;
 import com.goslogic.orion.iam.presentation.dto.CreateUserRequest;
 import com.goslogic.orion.iam.presentation.dto.UserResponse;
+import com.goslogic.orion.iam.presentation.dto.UserStatusRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -62,6 +63,16 @@ public class UserController {
     public ResponseEntity<UserResponse> assignRoles(@PathVariable String id,
                                                     @Valid @RequestBody AssignRolesRequest req) {
         User updated = userService.assignRoles(id, req.roles());
+        return ResponseEntity.ok(UserResponse.from(updated));
+    }
+
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Habilitar o deshabilitar usuario (solo ADMIN)")
+    public ResponseEntity<UserResponse> updateStatus(
+            @PathVariable String id,
+            @Valid @RequestBody UserStatusRequest req,
+            @RequestHeader(value = "X-Roles", required = false) String callerRoles) {
+        User updated = userService.setUserStatus(callerRoles, id, req.active());
         return ResponseEntity.ok(UserResponse.from(updated));
     }
 }

@@ -125,7 +125,8 @@ public class DataSeeder implements CommandLineRunner {
         admin.getRoles().add(adminRole);
         userRepository.save(admin);
 
-        log.info("[DataSeeder] Datos demo creados: tenant-demo, conductor@empresa.com, gestor@empresa.com, admin@empresa.com");
+        log.info("[DataSeeder] Datos demo creados: tenant-demo");
+        log.info("[DataSeeder] Credenciales demo — gestor@empresa.com/123456 (FLEET_MANAGER), admin@empresa.com/admin123 (ADMIN), conductor@empresa.com/123456 (DRIVER)");
     }
 
     /** Segundo tenant para la demo de aislamiento multi-tenant (P0-3). Guard propio. */
@@ -140,8 +141,9 @@ public class DataSeeder implements CommandLineRunner {
 
         Role driverRole = roleRepository.findByName("DRIVER")
                 .orElseThrow(() -> new IllegalStateException("Rol DRIVER no encontrado"));
+        Role managerRole = roleRepository.findByName("FLEET_MANAGER")
+                .orElseThrow(() -> new IllegalStateException("Rol FLEET_MANAGER no encontrado"));
 
-        // Conductor del tenant beta — external_id="driver-beta"
         User conductorBeta = new User("driver-beta", tenantBeta,
                 "conductor2@empresa.com",
                 passwordEncoder.encode("123456"),
@@ -149,7 +151,14 @@ public class DataSeeder implements CommandLineRunner {
         conductorBeta.getRoles().add(driverRole);
         userRepository.save(conductorBeta);
 
-        log.info("[DataSeeder] Datos beta creados: tenant-beta, conductor2@empresa.com");
+        User gestorBeta = new User("manager-beta", tenantBeta,
+                "gestor2@empresa.com",
+                passwordEncoder.encode("123456"),
+                "Beta", "Gestor");
+        gestorBeta.getRoles().add(managerRole);
+        userRepository.save(gestorBeta);
+
+        log.info("[DataSeeder] Datos beta creados: tenant-beta, conductor2@empresa.com, gestor2@empresa.com");
     }
 
     private Permission getOrCreatePermission(String resource, AccessLevel level) {

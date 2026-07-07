@@ -1,6 +1,7 @@
 package com.goslogic.orion.iam.application;
 
 import com.goslogic.orion.iam.application.exception.ConflictException;
+import com.goslogic.orion.iam.application.exception.ForbiddenException;
 import com.goslogic.orion.iam.application.exception.ResourceNotFoundException;
 import com.goslogic.orion.iam.domain.model.Role;
 import com.goslogic.orion.iam.domain.model.Tenant;
@@ -184,6 +185,22 @@ class UserApplicationServiceTest {
 
         assertThat(existingUser.isActive()).isFalse();
         verify(userRepository).save(existingUser);
+    }
+
+    @Test
+    void setUserStatus_deactivates_when_admin() {
+        when(userRepository.findByExternalId("manager-demo")).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User result = userService.setUserStatus("ADMIN", "manager-demo", false);
+
+        assertThat(result.isActive()).isFalse();
+    }
+
+    @Test
+    void setUserStatus_throwsForbidden_when_not_admin() {
+        assertThatThrownBy(() -> userService.setUserStatus("FLEET_MANAGER", "manager-demo", false))
+                .isInstanceOf(ForbiddenException.class);
     }
 
     private static void setId(Object entity, Long id) {

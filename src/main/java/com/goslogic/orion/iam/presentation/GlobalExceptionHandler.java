@@ -2,6 +2,7 @@ package com.goslogic.orion.iam.presentation;
 
 import com.goslogic.orion.iam.application.exception.AuthException;
 import com.goslogic.orion.iam.application.exception.ConflictException;
+import com.goslogic.orion.iam.application.exception.ForbiddenException;
 import com.goslogic.orion.iam.application.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorBody> handleConflict(ConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(body(409, "Conflict", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorBody> handleForbidden(ForbiddenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(body(403, "Forbidden", ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

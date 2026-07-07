@@ -1,6 +1,7 @@
 package com.goslogic.orion.iam.application;
 
 import com.goslogic.orion.iam.application.exception.ConflictException;
+import com.goslogic.orion.iam.application.exception.ForbiddenException;
 import com.goslogic.orion.iam.application.exception.ResourceNotFoundException;
 import com.goslogic.orion.iam.domain.model.Role;
 import com.goslogic.orion.iam.domain.model.Tenant;
@@ -94,5 +95,28 @@ public class UserApplicationService {
         User user = findByExternalId(externalId);
         user.setActive(false);
         userRepository.save(user);
+    }
+
+    public User activateUser(String externalId) {
+        User user = findByExternalId(externalId);
+        user.setActive(true);
+        return userRepository.save(user);
+    }
+
+    public User setUserStatus(String callerRoles, String externalId, boolean active) {
+        requireAdminRole(callerRoles);
+        return active ? activateUser(externalId) : deactivateUserAndReturn(externalId);
+    }
+
+    private User deactivateUserAndReturn(String externalId) {
+        User user = findByExternalId(externalId);
+        user.setActive(false);
+        return userRepository.save(user);
+    }
+
+    private void requireAdminRole(String callerRoles) {
+        if (callerRoles == null || !callerRoles.contains("ADMIN")) {
+            throw new ForbiddenException("Solo administradores pueden gestionar el estado de usuarios");
+        }
     }
 }
